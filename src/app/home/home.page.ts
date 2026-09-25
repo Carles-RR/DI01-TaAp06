@@ -4,14 +4,15 @@ import { Router } from '@angular/router';
 import {
   IonHeader, IonToolbar, IonTitle, IonContent, IonFooter,
   IonList, IonItem, IonLabel, IonButton, IonInput,
-  IonCard, IonCardHeader, IonCardTitle, IonCardContent,
+  IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonNote,
   ToastController
 } from '@ionic/angular/standalone';
 // TODO TA06 – Formularios reactivos
 // FormBuilder simplifica la creación de FormGroup con su método group().
 // ReactiveFormsModule habilita las directivas [formGroup] y formControlName en el HTML.
-import { ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 // TODO TA06 - Importar TitleCasePipe y SlicePipe
+import { TitleCasePipe, SlicePipe } from '@angular/common';
 
 import { Elemento } from '../models/elemento.model';
 
@@ -24,11 +25,11 @@ import { Elemento } from '../models/elemento.model';
     IonList, IonItem, IonLabel, IonButton, IonInput,
     IonCard, IonCardHeader, IonCardTitle, IonCardContent,
     // TODO TA06 - Añadir IonNote: componente para mostrar mensajes de error bajo los campos del formulario
-
+    IonNote,
     ReactiveFormsModule,
     // Pipes: TitleCasePipe capitaliza la primera letra de cada palabra; 
     // SlicePipe recorta cadenas
-
+    TitleCasePipe, SlicePipe
   ],
 })
 export class HomePage {
@@ -60,6 +61,7 @@ export class HomePage {
   private toastController = inject(ToastController);
   // TODO TA06 – FormBuilder: forma moderna de crear FormGroups con sintaxis abreviada.
   // inject() inyecta el servicio sin necesidad de declararlo en el constructor.
+  private fb = inject(FormBuilder);
 
   // ── FORMULARIO DINÁMICO ──────────────────────────────────────────────────────
   // TODO TA06 – Los campos se generan desde este array.
@@ -72,11 +74,11 @@ export class HomePage {
   ];
 
   //TODO TA06: Creamos el FormGroup mediante el FormBuild
-  formularioDinamico: any;
+  formularioDinamico!: FormGroup;
 
   //TODO TA06: Inicializamos el formulario dinámico
   constructor() {
-    
+    this.inicializarFormDinamico();
   }
 
   verDetalle(elementoHome: Elemento): void {
@@ -97,11 +99,15 @@ export class HomePage {
   // Revisar la teoría Formularios reactivos, apartado: "Alternativa: validators directos y Record<string, unknown>"
   inicializarFormDinamico(): void {
     // Inicializamos group mediante Record
-    
-    // Recorremos campos para rellenar el objeto group
-    
-    // Asignamos el nuevo valor a formularioDinamico
+    const group: Record<string, unknown> = {};
 
+    // Recorremos campos para rellenar el objeto group
+    this.campos.forEach(campo => {
+      group[campo.name] = ['', campo.validators];
+    });
+
+    // Asignamos el nuevo valor a formularioDinamico
+    this.formularioDinamico = this.fb.group(group);
   }
 
   // TODO TA06 – Envío del formulario dinámico: añade el elemento al signal igual que el estático.
@@ -109,16 +115,28 @@ export class HomePage {
   async agregarElemento(): Promise<void> {
     // Si el formularioDinamico es invalido ponemos todos los controles de FormGroup (y sus controles hijos) como touched.
     // Revisar la teoría Mostrar errores de validación, apartado: "Forzar la visualización de errores: markAllAsTouched()"
-    
+    if (this.formularioDinamico.invalid) {
+      this.formularioDinamico.markAllAsTouched();
+      return;
+    }
+
     // Asignamos los valores de nombre, descripcion y categoria con los valores que vienen desde formularioDinamico
-    
+    const { nombre, descripcion, categoria } = this.formularioDinamico.value;
+
     // Creamos el Elemento nuevo con los valores nombre, descripcion y categoria.
     // Necesitaremos añadir también el campo id, para ello -> id: Date.now(),
-    
+    const nuevoElemento: Elemento = {
+      id: Date.now(),
+      nombre: (nombre ?? '').trim(),
+      descripcion: (descripcion ?? '').trim(),
+      categoria: (categoria ?? '').trim()
+    };
+
     // Actualizaremos elementos con los valores que vienen en nuevoElemento.
     // Importante: hacer spread para crear una copia nueva añadiendo el nuevo elemento.
-    
-    // Reseteamos formularioDinamico
+    this.elementos.update(lista => [...lista, nuevoElemento]);
 
+    // Reseteamos formularioDinamico
+    this.formularioDinamico.reset();
   }
 }
